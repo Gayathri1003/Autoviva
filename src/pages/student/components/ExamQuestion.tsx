@@ -7,7 +7,7 @@ interface ExamQuestionProps {
     options: string[];
     marks: number;
   };
-  selectedAnswer?: number;
+  selectedAnswer?: number | null;
   onAnswer: (answer: number) => void;
   showFeedback?: boolean;
   correctAnswer?: number;

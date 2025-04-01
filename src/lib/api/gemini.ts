@@ -3,10 +3,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 interface GeneratedQuestion {
+  id: string;  // Add ID to the interface
   text: string;
   options: string[];
   correct_answer: number;
   difficulty: 'easy' | 'medium' | 'hard';
+  marks: number;
 }
 
 export async function generateQuestionsFromText(
@@ -42,12 +44,24 @@ export async function generateQuestionsFromText(
     
     try {
       // Try to parse the response as JSON directly
-      return JSON.parse(responseText);
+      const parsedQuestions = JSON.parse(responseText);
+      
+      // Add unique IDs and default marks to each question
+      return parsedQuestions.map((q: any, index: number) => ({
+        ...q,
+        id: `gen_${Date.now()}_${index}`,  // Generate unique ID
+        marks: 1  // Default marks
+      }));
     } catch (error) {
       // If direct parsing fails, try to extract JSON from the text
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsedQuestions = JSON.parse(jsonMatch[0]);
+        return parsedQuestions.map((q: any, index: number) => ({
+          ...q,
+          id: `gen_${Date.now()}_${index}`,  // Generate unique ID
+          marks: 1  // Default marks
+        }));
       }
       throw new Error('Failed to parse generated questions');
     }

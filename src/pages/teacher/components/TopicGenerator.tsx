@@ -10,11 +10,29 @@ interface TopicGeneratorProps {
   onQuestionsGenerated: () => void;
 }
 
+interface Question {
+  text: string;
+  options: string[];
+  correct_answer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  subject_id: string;
+  teacher_id: string;
+  marks: number;
+}
+
+interface GeneratedQuestion {
+  text: string;
+  options: string[];
+  correct_answer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
 const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsGenerated }) => {
   const [topic, setTopic] = useState('');
   const [count, setCount] = useState(5);
   const [loading, setLoading] = useState(false);
-  const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
   const { user } = useAuthStore();
   const { addQuestion } = useQuestionStore();
 
@@ -26,12 +44,45 @@ const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsG
 
     setLoading(true);
     try {
-      const questions = await generateQuestionsFromText(topic, count);
-      setGeneratedQuestions(questions);
+      // Fetch generated questions
+      const rawQuestions: GeneratedQuestion[] = await generateQuestionsFromText(topic, count);
 
-      // Save each generated question
+      // Transform GeneratedQuestion[] to Question[]
+      const questions: Question[] = rawQuestions.map((q) => ({
+        ...q,
+        subject_id: subjectId,
+        teacher_id: user!.id,
+        marks: 1, // Default marks value
+      }));
+
+      setGeneratedQuestions(questions);
+      setSelectedQuestions(new Set(questions.map((_, i) => i)));
+    } catch (error) {
+      console.error('Generation error:', error);
+      toast.error('Failed to generate questions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleQuestionSelection = (index: number) => {
+    const newSelected = new Set(selectedQuestions);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedQuestions(newSelected);
+  };
+
+  const handleSaveQuestions = async () => {
+    try {
+      const selectedQuestionsList = Array.from(selectedQuestions).map(
+        (index) => generatedQuestions[index]
+      );
+
       await Promise.all(
-        questions.map(question =>
+        selectedQuestionsList.map((question) =>
           addQuestion({
             text: question.text,
             options: question.options,
@@ -39,18 +90,17 @@ const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsG
             difficulty: question.difficulty,
             subject_id: subjectId,
             teacher_id: user!.id,
-            marks: 1
+            marks: 1,
           })
         )
       );
 
-      toast.success('Questions generated successfully!');
+      toast.success('Selected questions saved successfully!');
       onQuestionsGenerated();
+      setGeneratedQuestions([]);
+      setSelectedQuestions(new Set());
     } catch (error) {
-      console.error('Generation error:', error);
-      toast.error('Failed to generate questions');
-    } finally {
-      setLoading(false);
+      toast.error('Failed to save questions');
     }
   };
 
@@ -102,23 +152,56 @@ const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsG
         </button>
       </div>
 
-      {/* Display Generated Questions */}
       {generatedQuestions.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-bold mb-4">Generated Questions</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold">Generated Questions</h2>
+            <div className="space-x-4">
+              <button
+                onClick={() => setSelectedQuestions(new Set(generatedQuestions.map((_, i) => i)))}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                Select All
+              </button>
+              <button
+                onClick={() => setSelectedQuestions(new Set())}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                Deselect All
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-6">
             {generatedQuestions.map((question, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
+              <div
+                key={index}
+                className={`border rounded-lg p-4 space-y-3 cursor-pointer transition-colors ${
+                  selectedQuestions.has(index)
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => toggleQuestionSelection(index)}
+              >
                 <div className="flex justify-between items-start">
-                  <p className="font-medium text-gray-900">
-                    {index + 1}. {question.text}
-                  </p>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedQuestions.has(index)}
+                      onChange={() => toggleQuestionSelection(index)}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <p className="font-medium text-gray-900">
+                      {index + 1}. {question.text}
+                    </p>
+                  </div>
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
                     {question.difficulty}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {question.options.map((option: string, optIndex: number) => (
+                  {question.options.map((option, optIndex) => (
                     <div
                       key={optIndex}
                       className={`p-2 rounded-md ${
@@ -126,6 +209,7 @@ const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsG
                           ? 'bg-green-50 border border-green-200 text-green-700'
                           : 'bg-gray-50 border border-gray-200'
                       }`}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {String.fromCharCode(65 + optIndex)}. {option}
                     </div>
@@ -133,6 +217,16 @@ const TopicGenerator: React.FC<TopicGeneratorProps> = ({ subjectId, onQuestionsG
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleSaveQuestions}
+              disabled={selectedQuestions.size === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Save Selected Questions
+            </button>
           </div>
         </div>
       )}

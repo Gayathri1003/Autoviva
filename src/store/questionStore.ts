@@ -14,13 +14,15 @@ export const useQuestionStore = create<QuestionState>((set, get) => ({
 
   addQuestion: (questionData) => {
     const newQuestion: Question = {
-      id: Date.now().toString(),
+      id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,  // Generate unique ID
       ...questionData,
     };
 
     set((state) => ({
       questions: [...state.questions, newQuestion],
     }));
+
+    return newQuestion;  // Return the created question with its ID
   },
 
   updateQuestion: (id, questionData) => {
