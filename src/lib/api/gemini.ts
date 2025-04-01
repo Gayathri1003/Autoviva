@@ -1,43 +1,65 @@
-// gemini.ts
-import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-export const generateQuestionsFromText = async (topic: string, count: number) => {
+interface GeneratedQuestion {
+  text: string;
+  options: string[];
+  correct_answer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+export async function generateQuestionsFromText(
+  text: string,
+  count: number = 5
+): Promise<GeneratedQuestion[]> {
   try {
-    const response = await axios.post(
-      `${API_URL}/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: `Generate ${count} multiple-choice questions on the topic "${topic}". 
-                  Each question should include:
-                  1. The question text ending with a '?'.
-                  2. Four distinct answer options labeled as A), B), C), and D).
-                  3. The correct answer identified as one of A), B), C), or D).
-                  4. A varied difficulty level chosen from 'easy', 'medium', or 'hard'.
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-                  Example Format:
-                  - Question: What is the time complexity of binary search?
-                  - Options: A) O(n), B) O(log n), C) O(n^2), D) O(1)
-                  - Answer: B
-                  - Difficulty: medium
-                `
-              }
-            ]
-          }
-        ]
-      },
-      {
-        headers: { 'Content-Type': 'application/json' }
+    const prompt = `Generate ${count} multiple choice questions from the following topic. 
+      Format each question as a JSON object with properties:
+      - text: the question text
+      - options: array of 4 possible answers
+      - correct_answer: index of correct answer (0-3)
+      - difficulty: "easy", "medium", or "hard"
+      
+      Topic: ${text}
+      
+      Return ONLY a JSON array of questions with no additional text.
+      Example format:
+      [
+        {
+          "text": "What is the capital of France?",
+          "options": ["London", "Paris", "Berlin", "Madrid"],
+          "correct_answer": 1,
+          "difficulty": "easy"
+        }
+      ]`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const responseText = await response.text();
+    
+    try {
+      // Try to parse the response as JSON directly
+      return JSON.parse(responseText);
+    } catch (error) {
+      // If direct parsing fails, try to extract JSON from the text
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
       }
-    );
-    return response.data;
+      throw new Error('Failed to parse generated questions');
+    }
   } catch (error) {
-    console.error('API error while generating questions:', error);
-    throw error;
+    console.error('Question generation error:', error);
+    throw new Error('Failed to generate questions');
   }
-};
+}
+
+export async function generateQuestionsFromDocument(
+  documentText: string,
+  count: number = 5
+): Promise<GeneratedQuestion[]> {
+  return generateQuestionsFromText(documentText, count);
+}

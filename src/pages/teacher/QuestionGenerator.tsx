@@ -1,129 +1,98 @@
-// src/pages/teacher/QuestionGenerator.tsx
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import MethodSelector from './components/MethodSelector';
-import DocumentUploader from './components/DocumentUploader';
-import TopicGenerator from './components/TopicGenerator';
-import ManualQuestionEntry from './components/ManualQuestionEntry';
-import { useQuestionStore } from '../../store/questionStore';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import QuestionForm from './components/QuestionForm';
+import TopicGenerator from './components/TopicGenerator';
+import DocumentUploader from './components/DocumentUploader';
+import MethodSelector from './components/MethodSelector';
+import { useAuthStore } from '../../store/authStore';
+import { Home } from 'lucide-react';
 
-interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  correct_answer: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  subject_id: string;
-}
+type GenerationMethod = 'upload' | 'manual' | 'topic' | null;
 
 const QuestionGenerator = () => {
-  const { subjectId } = useParams<{ subjectId: string }>();
-  const [method, setMethod] = useState<'topic' | 'document' | 'manual'>('topic');
+  const location = useLocation();
+  const subjectId = location.state?.subjectId;
+  const subjectName = location.state?.subjectName;
+  const [generationMethod, setGenerationMethod] = useState<GenerationMethod>(null);
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const { getQuestionsBySubject, setQuestionsToDeploy } = useQuestionStore();
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
 
-  // Load questions for the subject when the component mounts or subjectId changes
-  useEffect(() => {
-    if (subjectId) {
-      const subjectQuestions = getQuestionsBySubject(subjectId);
-      setQuestions(subjectQuestions);
-    }
-  }, [subjectId, getQuestionsBySubject]);
-
-  // If subjectId is missing, redirect to the subject selection page
-  if (!subjectId) {
-    navigate('/teacher/subjects');
+  if (!subjectId || !subjectName) {
+    navigate('/teacher');
     return null;
   }
 
-  // Handle selecting/deselecting a question
-  const handleSelectQuestion = (questionText: string) => {
-    setSelectedQuestions((prev) =>
-      prev.includes(questionText)
-        ? prev.filter((text) => text !== questionText)
-        : [...prev, questionText]
-    );
+  const handleMethodSelect = (method: GenerationMethod) => {
+    setGenerationMethod(method);
   };
 
-  // Handle deploying selected questions
-  const handleDeploy = () => {
-    if (selectedQuestions.length === 0) {
-      toast.error('Please select at least one question to deploy');
-      return;
+  const handleQuestionsGenerated = () => {
+    toast.success('Questions have been generated successfully!');
+    setGenerationMethod(null);
+  };
+
+  const handleGoHome = () => {
+    navigate('/teacher');
+  };
+
+  const renderMethodContent = () => {
+    switch (generationMethod) {
+      case 'upload':
+        return (
+          <DocumentUploader 
+            subjectId={subjectId}
+            onQuestionsGenerated={handleQuestionsGenerated}
+          />
+        );
+      case 'manual':
+        return (
+          <QuestionForm 
+            subjectId={subjectId}
+            onSuccess={handleQuestionsGenerated}
+            onClose={() => setGenerationMethod(null)}
+          />
+        );
+      case 'topic':
+        return (
+          <TopicGenerator
+            subjectId={subjectId}
+            onQuestionsGenerated={handleQuestionsGenerated}
+          />
+        );
+      default:
+        return null;
     }
-
-    const questionsToDeploy = questions.filter((q) => selectedQuestions.includes(q.text));
-    setQuestionsToDeploy(questionsToDeploy); // Store selected questions for review
-    navigate(`/teacher/subject/${subjectId}/exam-setup`); // Navigate to exam setup for review
-    toast.success(`${selectedQuestions.length} question(s) selected for deployment!`);
-  };
-
-  // Refresh questions after adding a new one
-  const refreshQuestions = () => {
-    const updatedQuestions = getQuestionsBySubject(subjectId);
-    setQuestions(updatedQuestions);
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Generate Questions</h1>
-      <MethodSelector method={method} setMethod={setMethod} />
-      {method === 'topic' ? (
-        <TopicGenerator subjectId={subjectId} onQuestionsGenerated={refreshQuestions} />
-      ) : method === 'document' ? (
-        <DocumentUploader subjectId={subjectId} onQuestionsGenerated={refreshQuestions} />
-      ) : (
-        <ManualQuestionEntry subjectId={subjectId} onQuestionAdded={refreshQuestions} />
-      )}
-
-      {/* Display All Questions for the Subject */}
-      {questions.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-lg font-bold">All Questions for Subject</h2>
-          <ul className="space-y-4 mt-4">
-            {questions.map((question, index) => (
-              <li key={question.id} className="p-4 bg-gray-100 rounded-lg flex flex-col space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="font-bold">{index + 1}. {question.text}</p>
-                  <input
-                    type="checkbox"
-                    checked={selectedQuestions.includes(question.text)}
-                    onChange={() => handleSelectQuestion(question.text)}
-                    className="h-5 w-5 text-indigo-600 rounded"
-                  />
-                </div>
-                <div className="flex flex-col space-y-1">
-                  {question.options.map((option, idx) => (
-                    <p
-                      key={idx}
-                      className={
-                        question.correct_answer === String.fromCharCode(65 + idx)
-                          ? 'text-green-600'
-                          : ''
-                      }
-                    >
-                      {String.fromCharCode(65 + idx)}. {option}
-                    </p>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-500">
-                  Correct Answer: {question.correct_answer}
-                </p>
-                <p className="text-sm text-gray-500">Difficulty: {question.difficulty}</p>
-              </li>
-            ))}
-          </ul>
-          {/* Deploy Selected Questions Button */}
-          <button
-            onClick={handleDeploy}
-            className="mt-4 w-full flex justify-center items-center px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
-          >
-            Deploy Selected Questions ({selectedQuestions.length})
-          </button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Generate Questions</h1>
+          <p className="text-gray-600 mt-1">Subject: {subjectName}</p>
         </div>
+        <button
+          onClick={handleGoHome}
+          className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+        >
+          <Home className="w-4 h-4 mr-2" />
+          Go to Dashboard
+        </button>
+      </div>
+
+      {!generationMethod ? (
+        <MethodSelector onSelect={handleMethodSelect} />
+      ) : (
+        <>
+          {renderMethodContent()}
+          <button
+            onClick={() => setGenerationMethod(null)}
+            className="mt-4 text-indigo-600 hover:text-indigo-800"
+          >
+            ← Back to methods
+          </button>
+        </>
       )}
     </div>
   );

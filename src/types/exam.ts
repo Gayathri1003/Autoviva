@@ -2,11 +2,13 @@ export interface Question {
   id: string;
   text: string;
   options: string[];
-  correct_answer: string; // 'A', 'B', 'C', or 'D'
+  correct_answer: number;
   difficulty: 'easy' | 'medium' | 'hard';
+  marks: number;
   subject_id: string;
-  marks?: number; // Optional, used in QuestionSetup
+  teacher_id: string;
 }
+
 export interface Exam {
   id: string;
   title: string;

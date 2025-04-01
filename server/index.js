@@ -28,12 +28,12 @@ async function getAccessToken(clientId, clientSecret) {
         grant_type: 'client_credentials',
         client_id: clientId,
         client_secret: clientSecret,
-        scope: 'openid,AdobeID,read_organizations'
+        scope: 'openid,AdobeID,read_organizations',
       }),
       {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       }
     );
     return response.data.access_token;
@@ -43,12 +43,13 @@ async function getAccessToken(clientId, clientSecret) {
   }
 }
 
-// Configure Adobe PDF Services SDK with the access token
+// Configure Adobe PDF Services SDK with service account credentials
 async function createExecutionContext() {
-  const accessToken = await getAccessToken(CLIENT_ID, CLIENT_SECRET);
-
-  const credentials = PDFServicesSdk.Credentials.builder()
-    .withOAuthServerToServerCredentials(accessToken)
+  // Use service account credentials (client ID and secret) directly
+  const credentials = PDFServicesSdk.Credentials
+    .servicePrincipalCredentialsBuilder()
+    .withClientId(CLIENT_ID)
+    .withClientSecret(CLIENT_SECRET)
     .build();
 
   return PDFServicesSdk.ExecutionContext.create(credentials);
@@ -64,7 +65,7 @@ app.post('/extract-text', upload.single('file'), async (req, res) => {
     const inputFilePath = req.file.path;
     const outputZipPath = path.join(__dirname, 'output.zip');
 
-    // Create an ExecutionContext with the access token
+    // Create an ExecutionContext with the credentials
     const executionContext = await createExecutionContext();
 
     // Create a new Extract PDF operation
@@ -86,7 +87,7 @@ app.post('/extract-text', upload.single('file'), async (req, res) => {
     // Extract the JSON from the ZIP file
     const zip = new AdmZip(outputZipPath);
     const zipEntries = zip.getEntries();
-    const jsonEntry = zipEntries.find(entry => entry.entryName === 'structuredData.json');
+    const jsonEntry = zipEntries.find((entry) => entry.entryName === 'structuredData.json');
     if (!jsonEntry) {
       throw new Error('structuredData.json not found in ZIP');
     }
@@ -96,7 +97,7 @@ app.post('/extract-text', upload.single('file'), async (req, res) => {
 
     // Extract text from the JSON
     if (jsonData.elements) {
-      jsonData.elements.forEach(element => {
+      jsonData.elements.forEach((element) => {
         if (element.Text) {
           extractedText += element.Text + '\n';
         }

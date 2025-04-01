@@ -1,49 +1,55 @@
-// src/pages/teacher/components/MethodSelector.tsx
-import { Dispatch, SetStateAction } from 'react';
+import React from 'react';
+import { Icons } from '../../../components/icons';
 
-interface MethodSelectorProps {
-  method: 'topic' | 'document' | 'manual';
-  setMethod: Dispatch<SetStateAction<'topic' | 'document' | 'manual'>>;
+interface Method {
+  id: 'upload' | 'manual' | 'topic';
+  icon: keyof typeof Icons;
+  title: string;
+  description: string;
 }
 
-const MethodSelector: React.FC<MethodSelectorProps> = ({ method, setMethod }) => {
+interface MethodSelectorProps {
+  onSelect: (method: Method['id']) => void;
+}
+
+const MethodSelector: React.FC<MethodSelectorProps> = ({ onSelect }) => {
+  const methods: Method[] = [
+    {
+      id: 'upload',
+      icon: 'Upload',
+      title: 'Upload Document',
+      description: 'Generate questions from a document',
+    },
+    {
+      id: 'manual',
+      icon: 'Plus',
+      title: 'Manual Entry',
+      description: 'Create questions manually',
+    },
+    {
+      id: 'topic',
+      icon: 'BookOpen',
+      title: 'Topic Based',
+      description: 'Generate questions from a topic',
+    },
+  ];
+
   return (
-    <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Select Question Generation Method
-      </label>
-      <div className="flex space-x-4">
-        <button
-          onClick={() => setMethod('topic')}
-          className={`px-4 py-2 rounded-lg ${
-            method === 'topic'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Topic-Based
-        </button>
-        <button
-          onClick={() => setMethod('document')}
-          className={`px-4 py-2 rounded-lg ${
-            method === 'document'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Document-Based
-        </button>
-        <button
-          onClick={() => setMethod('manual')}
-          className={`px-4 py-2 rounded-lg ${
-            method === 'manual'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Manual Entry
-        </button>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+      {methods.map((method) => {
+        const Icon = Icons[method.icon];
+        return (
+          <button
+            key={method.id}
+            onClick={() => onSelect(method.id)}
+            className="p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
+          >
+            <Icon className="w-8 h-8 text-indigo-600 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">{method.title}</h3>
+            <p className="mt-2 text-sm text-gray-500">{method.description}</p>
+          </button>
+        );
+      })}
     </div>
   );
 };

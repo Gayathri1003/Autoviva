@@ -1,66 +1,67 @@
-// src/pages/teacher/exam/QuestionSetup.tsx
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../store/authStore';
 import { useQuestionStore } from '../../../store/questionStore';
+import QuestionSelection from './components/QuestionSelection';
+import ExamDeployment from './components/ExamDeployment';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { Question } from '../../../types/exam';
 
 const QuestionSetup = () => {
-  const { questionsToDeploy, clearQuestionsToDeploy } = useQuestionStore();
+  const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { getQuestionsBySubject } = useQuestionStore();
+  
+  const availableQuestions = getQuestionsBySubject(subjectId!);
+  const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
 
-  const handleDeployToStudents = () => {
-    if (questionsToDeploy.length === 0) {
-      toast.error('No questions selected for deployment');
+  const handleDeploy = async (examData: any) => {
+    if (selectedQuestions.length === 0) {
+      toast.error('Please select at least one question');
       return;
     }
 
-    // In a real implementation, you'd send the questions to a backend API to deploy to students
-    // For now, we'll simulate deployment by clearing the questions and showing a success message
-    clearQuestionsToDeploy();
-    toast.success('Questions deployed to students successfully!');
-    navigate('/teacher'); // Navigate back to the dashboard
+    try {
+      // For now, just show success message
+      toast.success('Exam deployed successfully');
+      navigate('/teacher');
+    } catch (error) {
+      toast.error('Failed to deploy exam');
+    }
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Exam Setup</h1>
-      {questionsToDeploy.length === 0 ? (
-        <p>No questions selected for deployment. Please select questions from the Question Generator.</p>
-      ) : (
-        <div>
-          <h2 className="text-lg font-bold mb-4">Review Questions for Deployment</h2>
-          <ul className="space-y-4">
-            {questionsToDeploy.map((question, index) => (
-              <li key={question.id} className="p-4 bg-gray-100 rounded-lg flex flex-col space-y-2">
-                <p className="font-bold">{index + 1}. {question.text}</p>
-                <div className="flex flex-col space-y-1">
-                  {question.options.map((option, idx) => (
-                    <p
-                      key={idx}
-                      className={
-                        question.correct_answer === String.fromCharCode(65 + idx)
-                          ? 'text-green-600'
-                          : ''
-                      }
-                    >
-                      {String.fromCharCode(65 + idx)}. {option}
-                    </p>
-                  ))}
-                </div>
-                <p className="text-sm text-gray-500">
-                  Correct Answer: {question.correct_answer}
-                </p>
-                <p className="text-sm text-gray-500">Difficulty: {question.difficulty}</p>
-              </li>
-            ))}
-          </ul>
-          <button
-            onClick={handleDeployToStudents}
-            className="mt-4 w-full flex justify-center items-center px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
-          >
-            Deploy to Students
-          </button>
-        </div>
-      )}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Setup Exam Questions</h1>
+        <button
+          onClick={() => navigate('/teacher')}
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <QuestionSelection
+          questions={availableQuestions}
+          selectedQuestions={selectedQuestions}
+          onSelectQuestion={(q) => setSelectedQuestions([...selectedQuestions, q])}
+          onRemoveQuestion={(id) => setSelectedQuestions(selectedQuestions.filter(q => q.id !== id))}
+          onUpdateMarks={(id, marks) => {
+            setSelectedQuestions(selectedQuestions.map(q => 
+              q.id === id ? { ...q, marks } : q
+            ));
+          }}
+        />
+        
+        <ExamDeployment
+          selectedQuestions={selectedQuestions}
+          subjectId={subjectId!}
+          onDeploy={handleDeploy}
+        />
+      </div>
     </div>
   );
 };

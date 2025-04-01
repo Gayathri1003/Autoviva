@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Question, Exam } from '../../types/exam';
+import { Question, Exam } from '../../types/exam;';
 
 const API_URL = 'http://localhost:5000/api';
 

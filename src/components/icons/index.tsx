@@ -15,7 +15,8 @@ import {
   Cross2Icon,
   CheckIcon,
   FileTextIcon,
-  BarChartIcon
+  BarChartIcon,
+  ReloadIcon
 } from '@radix-ui/react-icons';
 
 export const Icons = {
@@ -37,7 +38,8 @@ export const Icons = {
   AlertCircle: CheckIcon,
   FileText: FileTextIcon,
   ChartBar: BarChartIcon,
-  Upload: FileTextIcon
+  Upload: FileTextIcon,
+  Loader: ReloadIcon
 };
 
 export type IconName = keyof typeof Icons;

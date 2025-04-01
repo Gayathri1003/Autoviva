@@ -4,11 +4,9 @@ import { useQuestionStore } from '../../../store/questionStore';
 import toast from 'react-hot-toast';
 
 interface QuestionFormProps {
-  subjectId: string;           // Required prop
-  onSuccess: () => void;       // Callback to handle success
-  onClose: () => void;         // Callback to handle closing the form
+  subjectId: string;
+  onClose: () => void;
 }
-
 
 const QuestionForm: React.FC<QuestionFormProps> = ({ subjectId, onClose }) => {
   const { user } = useAuthStore();
