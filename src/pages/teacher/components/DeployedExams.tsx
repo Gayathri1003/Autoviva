@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { useExamStore } from '../../../store/examStore';
 import { Clock, Calendar } from 'lucide-react';
+import ExamDetailsView from './ExamDetailsView';
 
 const DeployedExams = () => {
   const { user } = useAuthStore();
   const { exams } = useExamStore();
+  const [selectedExam, setSelectedExam] = useState(null);
 
   // Filter exams for the current teacher
   const teacherExams = exams.filter(exam => exam.teacher_id === user?.id);
@@ -39,7 +41,11 @@ const DeployedExams = () => {
             const status = getExamStatus(exam.start_time, exam.end_time);
             
             return (
-              <div key={exam.id} className="bg-white rounded-lg shadow p-6">
+              <div 
+                key={exam.id} 
+                className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedExam(exam)}
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">{exam.title}</h3>
@@ -80,6 +86,13 @@ const DeployedExams = () => {
             );
           })}
         </div>
+      )}
+
+      {selectedExam && (
+        <ExamDetailsView
+          exam={selectedExam}
+          onClose={() => setSelectedExam(null)}
+        />
       )}
     </div>
   );

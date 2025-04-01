@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Question } from '../../../../types/exam';
 import { Icons } from '../../../../components/icons';
 
@@ -18,10 +18,23 @@ const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onUpdateMarks,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
 
-  const filteredQuestions = questions.filter(q => 
-    q.text.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    !selectedQuestions.find(sq => sq.id === q.id)
+  // Update available questions whenever questions or selectedQuestions change
+  useEffect(() => {
+    // Create a map of selected question IDs for efficient lookup
+    const selectedIds = new Set(selectedQuestions.map(q => q.id));
+    
+    // Filter out questions that are already selected
+    const available = questions.filter(q => !selectedIds.has(q.id));
+    
+    // Update available questions
+    setAvailableQuestions(available);
+  }, [questions, selectedQuestions]);
+
+  // Filter questions based on search query
+  const filteredQuestions = availableQuestions.filter(q => 
+    q.text.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -114,7 +127,7 @@ const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   Difficulty: {question.difficulty}
                 </span>
                 <button
-                  onClick={() => onSelectQuestion(question)}
+                  onClick={() => onSelectQuestion({ ...question })}
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
                 >
                   Select Question
@@ -122,6 +135,11 @@ const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             </div>
           ))}
+          {filteredQuestions.length === 0 && (
+            <p className="text-center text-gray-500 py-4">
+              No available questions found
+            </p>
+          )}
         </div>
       </div>
     </div>

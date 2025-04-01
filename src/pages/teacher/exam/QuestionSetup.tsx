@@ -16,6 +16,25 @@ const QuestionSetup = () => {
   const availableQuestions = getQuestionsBySubject(subjectId!);
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
 
+  const handleSelectQuestion = (question: Question) => {
+    // Create a deep copy of the question to avoid reference issues
+    const questionCopy = {
+      ...question,
+      options: [...question.options],
+    };
+    setSelectedQuestions(prev => [...prev, questionCopy]);
+  };
+
+  const handleRemoveQuestion = (questionId: string) => {
+    setSelectedQuestions(prev => prev.filter(q => q.id !== questionId));
+  };
+
+  const handleUpdateMarks = (questionId: string, marks: number) => {
+    setSelectedQuestions(prev =>
+      prev.map(q => (q.id === questionId ? { ...q, marks } : q))
+    );
+  };
+
   const handleDeploy = async (examData: any) => {
     if (selectedQuestions.length === 0) {
       toast.error('Please select at least one question');
@@ -47,13 +66,9 @@ const QuestionSetup = () => {
         <QuestionSelection
           questions={availableQuestions}
           selectedQuestions={selectedQuestions}
-          onSelectQuestion={(q) => setSelectedQuestions([...selectedQuestions, q])}
-          onRemoveQuestion={(id) => setSelectedQuestions(selectedQuestions.filter(q => q.id !== id))}
-          onUpdateMarks={(id, marks) => {
-            setSelectedQuestions(selectedQuestions.map(q => 
-              q.id === id ? { ...q, marks } : q
-            ));
-          }}
+          onSelectQuestion={handleSelectQuestion}
+          onRemoveQuestion={handleRemoveQuestion}
+          onUpdateMarks={handleUpdateMarks}
         />
         
         <ExamDeployment
